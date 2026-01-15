@@ -2,8 +2,6 @@ import "server-only";
 
 import { PrismaClient } from "@prisma/client";
 
-process.env.PRISMA_CLIENT_ENGINE_TYPE = "binary";
-
 const globalForPrisma = global as typeof global & {
   prisma?: PrismaClient;
 };
