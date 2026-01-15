@@ -93,6 +93,13 @@ export async function createSession(userId: string) {
   return { token, expiresAt };
 }
 
+export async function revokeSession(token?: string) {
+  if (!token) return;
+
+  const tokenHash = hashToken(token);
+  await prisma.session.deleteMany({ where: { tokenHash } });
+}
+
 export async function getSessionUser() {
   const sessionToken = cookies().get(SESSION_COOKIE_NAME)?.value;
   if (!sessionToken) return null;

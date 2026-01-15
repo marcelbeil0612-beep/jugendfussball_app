@@ -44,13 +44,26 @@ export default async function DashboardPage() {
   return (
     <div className="page">
       <main className="container stack">
-        <div className="stack">
-          <span className="pill">Rolle: {user.role}</span>
-          <h1>Dashboard</h1>
-          <p className="subtitle">
-            Dein rollenbasiertes Dashboard ist vorbereitet. Inhalte folgen.
-          </p>
+        <div className="toolbar">
+          <div className="stack">
+            <span className="pill">Rolle: {user.role}</span>
+            <h1>Dashboard</h1>
+          </div>
+          <form action="/api/auth/logout" method="post">
+            <button className="button button--secondary" type="submit">
+              Logout
+            </button>
+          </form>
         </div>
+        <p className="subtitle">
+          Dein rollenbasiertes Dashboard ist vorbereitet. Inhalte folgen.
+        </p>
+        <Card title="Account">
+          <div className="stack">
+            <p className="subtitle">E-Mail: {user.email}</p>
+            <p className="subtitle">Rolle: {user.role}</p>
+          </div>
+        </Card>
         <div className="grid">
           {cards.map((card) => (
             <Card
