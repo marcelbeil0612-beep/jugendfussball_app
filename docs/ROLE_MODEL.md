@@ -1,0 +1,13 @@
+# Rollenmodell
+
+## Rollen
+- TRAINER: Vollzugriff auf teambezogene Organisation (Termine, Training, Spiel)
+- COACH: Trainer-aehnlich, operativ
+- MANAGER: Organisation + Kommunikation
+- PARENT: Elternsicht (Termine, Fahrdienst, Ankuendigungen)
+- PLAYER: Spielersicht (Termine)
+
+## Server-seitige Durchsetzung
+- Session wird server-seitig validiert
+- Zugriff auf geschuetzte Bereiche nur mit gueltiger Session
+- Rollenpruefung via `requireRole([...])` in Server Components/Routes
