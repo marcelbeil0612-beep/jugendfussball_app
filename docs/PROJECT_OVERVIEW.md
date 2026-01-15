@@ -12,6 +12,10 @@ Auth per Magic-Link, Rollenmodell, Prisma + Neon Postgres, minimal UI.
 - Rollenbasiertes, minimales Dashboard
 - Docs unter /docs
 
+## Prisma Engine
+Wir nutzen keine Driver Adapters oder Accelerate. Prisma laeuft im Node-Modus
+mit Binary-Engine.
+
 ## Definition of Done (Phase 0)
 - Login per Magic-Link funktioniert und erzeugt Session
 - Rollen werden server-seitig geprueft
