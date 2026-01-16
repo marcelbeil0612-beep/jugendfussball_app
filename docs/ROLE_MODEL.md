@@ -11,3 +11,4 @@
 - Session wird server-seitig validiert
 - Zugriff auf geschuetzte Bereiche nur mit gueltiger Session
 - Rollenpruefung via `requireRole([...])` in Server Components/Routes
+- Auth- und Session-Logik laeuft im Node-Runtime-Kontext (kein Edge)

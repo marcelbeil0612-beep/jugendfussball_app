@@ -41,14 +41,19 @@ const roleCards: Record<Role, CardItem[]> = {
 
 export default async function DashboardPage() {
   const user = await requireAuth();
-  const cards = roleCards[user.role] ?? [];
+  const activeMembershipRole = user.memberships?.find(
+    (membership) => membership.teamId === user.activeTeamId
+  )?.role;
+  const roleLabel = activeMembershipRole ?? "—";
+  const cards = activeMembershipRole ? roleCards[activeMembershipRole] ?? [] : [];
+  const teamName = user.activeTeam?.name ?? "Nicht zugeordnet";
 
   return (
     <div className="page">
       <main className="container stack">
         <div className="toolbar">
           <div className="stack">
-            <span className="pill">Rolle: {user.role}</span>
+            <span className="pill">Rolle: {roleLabel}</span>
             <h1>Dashboard</h1>
           </div>
           <form action="/api/auth/logout" method="post">
@@ -63,9 +68,9 @@ export default async function DashboardPage() {
         <Card title="Account">
           <div className="stack">
             <p className="subtitle">E-Mail: {user.email}</p>
-            <p className="subtitle">Rolle: {user.role}</p>
+            <p className="subtitle">Rolle: {roleLabel}</p>
             <p className="subtitle">
-              Team: {user.team?.name ?? "Nicht zugeordnet"}
+              Team: {teamName}
             </p>
           </div>
         </Card>

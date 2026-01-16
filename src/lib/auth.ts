@@ -105,7 +105,14 @@ export async function getSessionUser() {
   const tokenHash = hashToken(sessionToken);
   const session = await prisma.session.findUnique({
     where: { tokenHash },
-    include: { user: { include: { team: true } } },
+    include: {
+      user: {
+        include: {
+          activeTeam: true,
+          memberships: true,
+        },
+      },
+    },
   });
 
   if (!session || session.expiresAt < new Date()) {

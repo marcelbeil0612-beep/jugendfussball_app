@@ -6,8 +6,8 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  const teamName = "Jugendfussball";
-  const email = "marcelbeil@gmx.de";
+  const teamName = "SV Steinheim U13";
+  const email = "demo.trainer@example.com";
 
   const team = await prisma.team.upsert({
     where: { name: teamName },
@@ -15,10 +15,16 @@ async function main() {
     create: { name: teamName },
   });
 
-  await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { email },
-    update: { role: "TRAINER", teamId: team.id },
-    create: { email, role: "TRAINER", teamId: team.id },
+    update: { activeTeamId: team.id },
+    create: { email, activeTeamId: team.id },
+  });
+
+  await prisma.teamMember.upsert({
+    where: { userId_teamId: { userId: user.id, teamId: team.id } },
+    update: { role: "TRAINER" },
+    create: { userId: user.id, teamId: team.id, role: "TRAINER" },
   });
 }
 

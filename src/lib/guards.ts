@@ -15,7 +15,10 @@ export async function requireAuth() {
 
 export async function requireRole(allowedRoles: Role[]) {
   const user = await requireAuth();
-  if (!allowedRoles.includes(user.role)) {
+  const activeRole = user.memberships?.find(
+    (membership) => membership.teamId === user.activeTeamId
+  )?.role;
+  if (!activeRole || !allowedRoles.includes(activeRole)) {
     redirect("/unauthorized");
   }
   return user;

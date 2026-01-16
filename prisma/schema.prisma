@@ -20,18 +20,36 @@ model Team {
   id        String   @id @default(uuid())
   name      String   @default("Jugendfussball")
   createdAt DateTime @default(now())
-  users     User[]
+  members   TeamMember[]
+  activeUsers User[] @relation("ActiveTeam")
 }
 
 model User {
-  id         String           @id @default(uuid())
-  email      String           @unique
-  role       Role             @default(PARENT)
-  teamId     String?
-  team       Team?            @relation(fields: [teamId], references: [id])
-  createdAt  DateTime         @default(now())
-  sessions   Session[]
-  magicLinks MagicLinkToken[]
+  id            String           @id @default(uuid())
+  email         String           @unique
+  activeTeamId  String?
+  activeTeam    Team?            @relation("ActiveTeam", fields: [activeTeamId], references: [id])
+  createdAt     DateTime         @default(now())
+  sessions      Session[]
+  magicLinks    MagicLinkToken[]
+  memberships   TeamMember[]
+
+  @@index([activeTeamId])
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  userId    String
+  teamId    String
+  role      Role     @default(PARENT)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
 }
 
 model Session {
