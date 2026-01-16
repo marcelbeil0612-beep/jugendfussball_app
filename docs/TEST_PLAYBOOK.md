@@ -14,3 +14,16 @@
 - Magic-Link Mail wird gesendet
 - Magic-Link verifiziert und leitet zu /dashboard
 - Dashboard zeigt Karten entsprechend der Rolle
+
+## E2E Magic-Link (real SMTP)
+1. Dev-Server laeuft: `npm run dev`.
+   Erwartung: `/auth/login` laedt ohne Fehler.
+2. `http://localhost:3000/auth/login` oeffnen und die SMTP-aktive Test-Adresse
+   eingeben (z.B. `marcelbeil@gmx.de`), Formular absenden.
+   Erwartung: Seite zeigt den Hinweis "Wenn die E-Mail existiert, ist der Magic-Link unterwegs."
+3. Postfach der Test-Adresse pruefen und den Magic-Link oeffnen.
+   Erwartung: Link ist gueltig, keine Fehlermeldung.
+4. Nach dem Klick wird auf `/dashboard` umgeleitet.
+   Erwartung: Dashboard laedt, Rolle und Team sind sichtbar (Account-Box).
+5. Logout-Button klicken.
+   Erwartung: Session-Cookie wird geloescht und Redirect zu `/auth/login`.

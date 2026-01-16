@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   const session = await createSession(user.id);
-  setSessionCookie(session.token, session.expiresAt);
+  await setSessionCookie(session.token, session.expiresAt);
 
   return NextResponse.redirect(new URL("/dashboard", request.url));
 }

@@ -1,12 +1,12 @@
 import "server-only";
 
 import crypto from "node:crypto";
-import nodemailer from "nodemailer";
 import { cookies } from "next/headers";
 
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { SESSION_COOKIE_NAME } from "@/lib/constants";
+import { sendMagicLinkEmail } from "@/lib/mailer";
 
 const MAGIC_LINK_TTL_MINUTES = 15;
 const SESSION_TTL_DAYS = 7;
@@ -49,12 +49,9 @@ export async function requestMagicLink(rawEmail: string) {
   const magicUrl = new URL("/auth/magic/verify", env.APP_URL);
   magicUrl.searchParams.set("token", token);
 
-  const transporter = nodemailer.createTransport(env.AUTH_EMAIL_SERVER);
-  await transporter.sendMail({
-    from: env.AUTH_EMAIL_FROM,
+  await sendMagicLinkEmail({
     to: email,
-    subject: "Dein Login-Link",
-    text: `Hallo!\n\nHier ist dein Magic Link:\n${magicUrl.toString()}\n\nDer Link ist ${MAGIC_LINK_TTL_MINUTES} Minuten gueltig.`,
+    magicLink: magicUrl.toString(),
   });
 }
 
@@ -101,7 +98,8 @@ export async function revokeSession(token?: string) {
 }
 
 export async function getSessionUser() {
-  const sessionToken = cookies().get(SESSION_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionToken) return null;
 
   const tokenHash = hashToken(sessionToken);
@@ -120,8 +118,9 @@ export async function getSessionUser() {
   return session.user;
 }
 
-export function setSessionCookie(token: string, expiresAt: Date) {
-  cookies().set(SESSION_COOKIE_NAME, token, {
+export async function setSessionCookie(token: string, expiresAt: Date) {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
