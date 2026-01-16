@@ -22,6 +22,7 @@ model Team {
   createdAt DateTime @default(now())
   members   TeamMember[]
   activeUsers User[] @relation("ActiveTeam")
+  invites   TeamInvite[]
 }
 
 model User {
@@ -74,4 +75,21 @@ model MagicLinkToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model TeamInvite {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  teamId    String
+  email     String
+  role      Role
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  usedAt    DateTime?
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([email])
 }

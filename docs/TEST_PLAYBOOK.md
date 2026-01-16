@@ -28,6 +28,15 @@
 - Regression:
   Erwartung: Login/Logout/Session weiterhin stabil (keine neuen Fehler).
 
+## Smoke Tests (Phase 2 – Team-Invite)
+- TRAINER sieht Invite-Box im Dashboard.
+- PARENT / PLAYER sehen keine Invite-Box.
+- TRAINER kann Invite mit Rolle PARENT oder PLAYER versenden.
+- Invite-Mail enthaelt funktionierenden `/join/{token}`-Link.
+- Nicht eingeloggter User -> Login -> Join -> Dashboard.
+- Invite ist einmalig (zweiter Aufruf zeigt Fehlerseite).
+- Invite mit falscher E-Mail -> Fehlerseite.
+
 ## E2E Magic-Link (Resend)
 1. Dev-Server laeuft: `npm run dev`.
    Erwartung: `/auth/login` laedt ohne Fehler.

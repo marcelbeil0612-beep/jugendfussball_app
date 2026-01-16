@@ -34,3 +34,9 @@ mit Binary-Engine.
 - Team-Zuordnung laeuft ausschliesslich ueber TeamMember (keine direkte Team.users Relation mehr)
 - Active-Team-Relation ist explizit: User.activeTeam @relation("ActiveTeam") + Team.activeUsers
 - Implizite Join-Tabelle _TeamToUser wurde entfernt (Schema-Cleanup)
+
+## Phase 2: Team-Beitritt
+- Einladung per E-Mail (Token-Link)
+- Rolle wird vom TRAINER festgelegt
+- Login via Magic-Link
+- TeamMember + activeTeamId werden gesetzt

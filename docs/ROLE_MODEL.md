@@ -1,7 +1,7 @@
 # Rollenmodell
 
 ## Rollen
-- TRAINER: Vollzugriff auf teambezogene Organisation (Termine, Training, Spiel)
+- TRAINER: Vollzugriff auf teambezogene Organisation (Termine, Training, Spiel), darf Mitglieder einladen (PARENT / PLAYER)
 - COACH: Trainer-aehnlich, operativ
 - MANAGER: Organisation + Kommunikation
 - PARENT: Elternsicht (Termine, Fahrdienst, Ankuendigungen)
