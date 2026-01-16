@@ -1,18 +1,20 @@
-import { requestMagicLink } from "@/lib/auth";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { redirect } from "next/navigation";
 
+export const runtime = "nodejs";
+
 type LoginPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     sent?: string;
     error?: string;
-  };
+  }>;
 };
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  const sent = searchParams?.sent === "1";
-  const error = searchParams?.error === "token";
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const sent = resolvedSearchParams?.sent === "1";
+  const error = resolvedSearchParams?.error === "token";
 
   return (
     <div className="page">
@@ -55,6 +57,7 @@ async function requestMagicLinkAction(formData: FormData) {
   "use server";
 
   const email = String(formData.get("email") ?? "");
+  const { requestMagicLink } = await import("@/lib/auth");
   await requestMagicLink(email);
   redirect("/auth/login?sent=1");
 }

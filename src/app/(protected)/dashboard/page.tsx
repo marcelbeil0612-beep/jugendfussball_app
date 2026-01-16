@@ -3,6 +3,8 @@ import { Role } from "@prisma/client";
 import { Card } from "@/components/Card";
 import { requireAuth } from "@/lib/guards";
 
+export const runtime = "nodejs";
+
 type CardItem = {
   title: string;
   description: string;

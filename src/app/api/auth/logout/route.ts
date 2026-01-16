@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 import { revokeSession } from "@/lib/auth";
 import { SESSION_COOKIE_NAME } from "@/lib/constants";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   await revokeSession(token);

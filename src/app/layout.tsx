@@ -7,6 +7,8 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+export const runtime = "nodejs";
+
 export const metadata: Metadata = {
   title: "Jugendfussball Team-App",
   description: "Phase-0 Foundation fuer Team-Organisation",

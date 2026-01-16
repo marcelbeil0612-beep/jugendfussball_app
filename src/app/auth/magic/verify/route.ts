@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 
 import { consumeMagicLink, createSession, setSessionCookie } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
 
