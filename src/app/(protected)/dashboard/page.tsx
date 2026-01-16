@@ -64,6 +64,9 @@ export default async function DashboardPage() {
           <div className="stack">
             <p className="subtitle">E-Mail: {user.email}</p>
             <p className="subtitle">Rolle: {user.role}</p>
+            <p className="subtitle">
+              Team: {user.team?.name ?? "Nicht zugeordnet"}
+            </p>
           </div>
         </Card>
         <div className="grid">
