@@ -158,3 +158,17 @@ main {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge--success {
+  background: rgba(31, 157, 85, 0.12);
+  color: var(--accent-strong);
+}

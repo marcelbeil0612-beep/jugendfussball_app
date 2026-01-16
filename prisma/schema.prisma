@@ -28,6 +28,8 @@ model Team {
 model User {
   id            String           @id @default(uuid())
   email         String           @unique
+  passwordHash  String?          // neu: Hash des Passworts, optional fuer bestehende User
+  isSystemAdmin Boolean          @default(false) // neu: System-Admin-Flag
   activeTeamId  String?
   activeTeam    Team?            @relation("ActiveTeam", fields: [activeTeamId], references: [id])
   createdAt     DateTime         @default(now())

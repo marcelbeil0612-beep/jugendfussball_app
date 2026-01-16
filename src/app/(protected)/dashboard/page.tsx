@@ -1,11 +1,12 @@
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
-import { Card } from "@/components/Card";
-import { requireAuth } from "@/lib/guards";
+import { requireAuth, requireSystemAdmin } from "@/lib/guards";
 import { env } from "@/lib/env";
 import { createTeamInvite } from "@/lib/teamInvites";
 import { sendTeamInviteEmail } from "@/lib/mailer";
+import { getMembersForActiveTeam, getTeamsForUser, setActiveTeam } from "@/lib/teams";
+import { DashboardPageClient } from "./DashboardPageClient";
 
 export const runtime = "nodejs";
 
@@ -43,18 +44,14 @@ const roleCards: Record<Role, CardItem[]> = {
   PLAYER: playerCards,
 };
 
-type DashboardPageProps = {
-  searchParams?: { invite?: string };
+type InviteState = {
+  ok: boolean;
+  error?: string;
+  inviteUrl?: string;
+  email?: string;
 };
 
-const inviteMessages: Record<string, string> = {
-  sent: "Einladung versendet.",
-  error: "Einladung konnte nicht gesendet werden.",
-  forbidden: "Nur Trainer duerfen Einladungen senden.",
-  missing_team: "Aktives Team fehlt.",
-};
-
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage() {
   const user = await requireAuth();
   const activeMembershipRole = user.memberships?.find(
     (membership) => membership.teamId === user.activeTeamId
@@ -62,26 +59,34 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const roleLabel = activeMembershipRole ?? "—";
   const cards = activeMembershipRole ? roleCards[activeMembershipRole] ?? [] : [];
   const teamName = user.activeTeam?.name ?? "Nicht zugeordnet";
-  const inviteMessage = searchParams?.invite
-    ? inviteMessages[searchParams.invite]
-    : null;
+  const teamMembersForUser = await getMembersForActiveTeam(user.id);
+  const userTeams = await getTeamsForUser(user.id);
+  const isSystemAdmin = user.isSystemAdmin;
 
-  async function inviteAction(formData: FormData) {
+  async function switchActiveTeamAction(formData: FormData) {
     "use server";
 
+    const teamId = formData.get("teamId");
+
+    if (typeof teamId !== "string" || !teamId) {
+      return;
+    }
+
     const sessionUser = await requireAuth();
+    await setActiveTeam(sessionUser.id, teamId);
+  }
+
+  async function inviteAction(
+    _prevState: InviteState,
+    formData: FormData
+  ): Promise<InviteState> {
+    "use server";
+
+    const sessionUser = await requireSystemAdmin();
     const teamId = sessionUser.activeTeamId;
 
     if (!teamId) {
-      redirect("/dashboard?invite=missing_team");
-    }
-
-    const role = sessionUser.memberships?.find(
-      (membership) => membership.teamId === teamId
-    )?.role;
-
-    if (role !== Role.TRAINER) {
-      redirect("/dashboard?invite=forbidden");
+      return { ok: false, error: "Aktives Team fehlt." };
     }
 
     const emailValue = String(formData.get("email") ?? "").trim();
@@ -92,16 +97,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         : null;
 
     if (!emailValue || !inviteRole) {
-      redirect("/dashboard?invite=error");
+      return { ok: false, error: "Bitte E-Mail und Rolle pruefen." };
     }
 
     try {
-      const { token } = await createTeamInvite({
+      const invite = await createTeamInvite({
         teamId,
         email: emailValue,
         role: inviteRole,
       });
-      const inviteLink = new URL(`/join/${token}`, env.APP_URL).toString();
+      const inviteLink = new URL(`/join/${invite.token}`, env.APP_URL).toString();
       const inviteTeamName = sessionUser.activeTeam?.name ?? "Team";
 
       await sendTeamInviteEmail({
@@ -111,75 +116,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         role: inviteRole,
       });
 
-      redirect("/dashboard?invite=sent");
+      return { ok: true, inviteUrl: inviteLink, email: emailValue };
     } catch {
-      redirect("/dashboard?invite=error");
+      return { ok: false, error: "Einladung konnte nicht gesendet werden." };
     }
   }
 
   return (
-    <div className="page">
-      <main className="container stack">
-        <div className="toolbar">
-          <div className="stack">
-            <span className="pill">Rolle: {roleLabel}</span>
-            <h1>Dashboard</h1>
-          </div>
-          <form action="/api/auth/logout" method="post">
-            <button className="button button--secondary" type="submit">
-              Logout
-            </button>
-          </form>
-        </div>
-        <p className="subtitle">
-          Dein rollenbasiertes Dashboard ist vorbereitet. Inhalte folgen.
-        </p>
-        {inviteMessage ? <p className="subtitle">{inviteMessage}</p> : null}
-        <Card title="Account">
-          <div className="stack">
-            <p className="subtitle">E-Mail: {user.email}</p>
-            <p className="subtitle">Rolle: {roleLabel}</p>
-            <p className="subtitle">
-              Team: {teamName}
-            </p>
-          </div>
-        </Card>
-        {activeMembershipRole === Role.TRAINER ? (
-          <Card title="Mitglied einladen">
-            <form className="stack" action={inviteAction}>
-              <label className="stack">
-                <span className="subtitle">E-Mail</span>
-                <input
-                  className="input"
-                  type="email"
-                  name="email"
-                  required
-                />
-              </label>
-              <label className="stack">
-                <span className="subtitle">Rolle</span>
-                <select className="input" name="role" defaultValue={Role.PARENT}>
-                  <option value={Role.PARENT}>PARENT</option>
-                  <option value={Role.PLAYER}>PLAYER</option>
-                </select>
-              </label>
-              <button className="button button--primary" type="submit">
-                Einladung senden
-              </button>
-            </form>
-          </Card>
-        ) : null}
-        <div className="grid">
-          {cards.map((card) => (
-            <Card
-              key={card.title}
-              title={card.title}
-              description={card.description}
-              disabled
-            />
-          ))}
-        </div>
-      </main>
-    </div>
+    <DashboardPageClient
+      roleLabel={roleLabel}
+      cards={cards}
+      teamName={teamName}
+      isSystemAdmin={isSystemAdmin}
+      userEmail={user.email}
+      inviteAction={inviteAction}
+      teamMembers={teamMembersForUser.members}
+      currentUserRole={teamMembersForUser.currentUserRole}
+      teams={userTeams}
+      switchActiveTeamAction={switchActiveTeamAction}
+    />
   );
 }

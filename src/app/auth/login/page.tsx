@@ -1,63 +1,75 @@
-import { Button } from "@/components/Button";
-import { Card } from "@/components/Card";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+
+import { Card } from "@/components/Card";
+import { verifyPassword } from "@/lib/auth-password";
+import { createSession, setSessionCookie } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { LoginForm } from "./LoginForm";
 
 export const runtime = "nodejs";
 
-type LoginPageProps = {
-  searchParams?: Promise<{
-    sent?: string;
-    error?: string;
-  }>;
-};
+type ActionState = { ok: boolean; error?: string };
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const resolvedSearchParams = await searchParams;
-  const sent = resolvedSearchParams?.sent === "1";
-  const error = resolvedSearchParams?.error === "token";
+const LoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
 
+export default async function LoginPage() {
   return (
     <div className="page">
       <main className="container stack">
         <Card
-          title="Magic-Link Login"
-          description="Gib deine E-Mail ein, wir schicken dir einen Login-Link."
+          title="Einloggen"
+          description="Melde dich mit deiner E-Mail und deinem Passwort an."
         >
-          <form className="form" action={requestMagicLinkAction}>
-            <label className="stack" htmlFor="email">
-              <span>E-Mail</span>
-              <input
-                className="input"
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="name@verein.de"
-              />
-            </label>
-            <Button type="submit">Login-Link senden</Button>
-          </form>
-          {sent ? (
+          <LoginForm action={loginWithPasswordAction} />
+          <div className="stack">
             <p className="subtitle">
-              Wenn die E-Mail existiert, ist der Magic-Link unterwegs.
+              Du wurdest eingeladen? Nutze den Registrierungslink aus deiner
+              E-Mail.
             </p>
-          ) : null}
-          {error ? (
-            <p className="subtitle">
-              Der Link ist ungueltig oder abgelaufen. Bitte neu anfordern.
-            </p>
-          ) : null}
+            <p className="subtitle">Passwort vergessen? (kommt spaeter)</p>
+          </div>
         </Card>
       </main>
     </div>
   );
 }
 
-async function requestMagicLinkAction(formData: FormData) {
+async function loginWithPasswordAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   "use server";
 
-  const email = String(formData.get("email") ?? "");
-  const { requestMagicLink } = await import("@/lib/auth");
-  await requestMagicLink(email);
-  redirect("/auth/login?sent=1");
+  const raw = {
+    email: formData.get("email"),
+    password: formData.get("password"),
+  };
+
+  const parsed = LoginSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: "Bitte E-Mail und Passwort pruefen." };
+  }
+
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user?.passwordHash) {
+    return { ok: false, error: "E-Mail oder Passwort falsch." };
+  }
+
+  const valid = await verifyPassword(password, user.passwordHash);
+  if (!valid) {
+    return { ok: false, error: "E-Mail oder Passwort falsch." };
+  }
+
+  const session = await createSession(user.id);
+  await setSessionCookie(session.token, session.expiresAt);
+
+  redirect("/dashboard");
 }

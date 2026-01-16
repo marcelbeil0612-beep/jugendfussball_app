@@ -41,7 +41,7 @@ export async function createTeamInvite(params: {
       ? addDays(new Date(), params.expiresInDays)
       : undefined;
 
-  await prisma.teamInvite.create({
+  const invite = await prisma.teamInvite.create({
     data: {
       teamId: params.teamId,
       email: normalizedEmail,
@@ -51,7 +51,7 @@ export async function createTeamInvite(params: {
     },
   });
 
-  return { token };
+  return invite;
 }
 
 export async function acceptTeamInvite(params: {

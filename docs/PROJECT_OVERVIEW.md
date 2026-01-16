@@ -40,3 +40,16 @@ mit Binary-Engine.
 - Rolle wird vom TRAINER festgelegt
 - Login via Magic-Link
 - TeamMember + activeTeamId werden gesetzt
+
+## Phase 3 – Passwort-Auth (in Arbeit)
+- `User.passwordHash` fuer kuenftiges Login-Formular (E-Mail + Passwort)
+- `User.isSystemAdmin` als System-Admin-Flag
+- Login erfolgt ausschliesslich ueber E-Mail + Passwort (`/auth/login`)
+- Magic-Link wird nur noch fuer Registrierung/Invites genutzt (kein normaler Login)
+- Einladungen: Admin erzeugt Invite, System verschickt E-Mail und zeigt den gleichen Join-Link im Dashboard (z. B. fuer WhatsApp)
+- Im Dashboard sieht nur der System-Admin den Einladungsbereich (Admin-Tool)
+- Dev/Stage: Demo-Admin `demo.trainer@example.com` mit Startpasswort (siehe TEST_PLAYBOOK)
+- Neue Pflicht: User ohne Passwort werden auf `/auth/set-password` umgeleitet
+- Invite/Registrierung fuehrt nach Session auf `/auth/set-password`
+- System-Admin-Gates: Team-Erstellung, Invites und Rollenverwaltung nur mit `isSystemAdmin`
+- Phase 4: TRAINER duerfen fuer ihr Team Einladungen verschicken (TeamMember.role)

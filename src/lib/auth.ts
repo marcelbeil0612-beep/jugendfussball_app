@@ -105,9 +105,15 @@ export async function getSessionUser() {
   const tokenHash = hashToken(sessionToken);
   const session = await prisma.session.findUnique({
     where: { tokenHash },
-    include: {
+    select: {
+      id: true,
+      expiresAt: true,
       user: {
-        include: {
+        select: {
+          id: true,
+          email: true,
+          activeTeamId: true,
+          isSystemAdmin: true,
           activeTeam: true,
           memberships: true,
         },
@@ -122,6 +128,7 @@ export async function getSessionUser() {
     return null;
   }
 
+  // Hinweis: Wenn Session-User an den Client geht, passwordHash vorher entfernen.
   return session.user;
 }
 
