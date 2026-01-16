@@ -13,8 +13,11 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "dependencies": {
-    "@prisma/client": "^7.2.0",
+    "@prisma/client": "^6.19.2",
     "next": "16.1.2",
     "nodemailer": "^7.0.12",
     "react": "19.2.3",
@@ -31,7 +34,7 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.2",
-    "prisma": "^7.2.0",
+    "prisma": "^6.19.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
