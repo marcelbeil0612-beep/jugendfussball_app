@@ -1,11 +1,20 @@
 import { Role } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAuth, requireSystemAdmin } from "@/lib/guards";
 import { env } from "@/lib/env";
 import { createTeamInvite } from "@/lib/teamInvites";
 import { sendTeamInviteEmail } from "@/lib/mailer";
-import { getMembersForActiveTeam, getTeamsForUser, setActiveTeam } from "@/lib/teams";
+import {
+  createTeam,
+  deleteTeam,
+  getAllTeamsForAdmin,
+  getMembersForActiveTeam,
+  getTeamsForUser,
+  renameTeam,
+  setActiveTeam,
+} from "@/lib/teams";
 import { DashboardPageClient } from "./DashboardPageClient";
 
 export const runtime = "nodejs";
@@ -51,6 +60,64 @@ type InviteState = {
   email?: string;
 };
 
+export async function createTeamAction(formData: FormData) {
+  "use server";
+
+  const user = await requireSystemAdmin();
+  const teamName = String(formData.get("teamName") ?? "");
+
+  if (!teamName.trim()) {
+    return { ok: false, error: "Team-Name fehlt." };
+  }
+
+  try {
+    await createTeam(teamName, user.id);
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Team konnte nicht erstellt werden." };
+  }
+}
+
+export async function renameTeamAction(formData: FormData) {
+  "use server";
+
+  await requireSystemAdmin();
+  const teamId = String(formData.get("teamId") ?? "");
+  const newName = String(formData.get("newName") ?? "");
+
+  if (!teamId || !newName.trim()) {
+    return { ok: false, error: "Team-Name fehlt." };
+  }
+
+  try {
+    await renameTeam(teamId, newName);
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Team konnte nicht umbenannt werden." };
+  }
+}
+
+export async function deleteTeamAction(formData: FormData) {
+  "use server";
+
+  await requireSystemAdmin();
+  const teamId = String(formData.get("teamId") ?? "");
+
+  if (!teamId) {
+    return { ok: false, error: "Team fehlt." };
+  }
+
+  try {
+    await deleteTeam(teamId);
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Team konnte nicht geloescht werden." };
+  }
+}
+
 export default async function DashboardPage() {
   const user = await requireAuth();
   const activeMembershipRole = user.memberships?.find(
@@ -62,6 +129,7 @@ export default async function DashboardPage() {
   const teamMembersForUser = await getMembersForActiveTeam(user.id);
   const userTeams = await getTeamsForUser(user.id);
   const isSystemAdmin = user.isSystemAdmin;
+  const adminTeams = isSystemAdmin ? await getAllTeamsForAdmin() : [];
 
   async function switchActiveTeamAction(formData: FormData) {
     "use server";
@@ -89,12 +157,20 @@ export default async function DashboardPage() {
       return { ok: false, error: "Aktives Team fehlt." };
     }
 
+    const firstNameValue = String(formData.get("firstName") ?? "").trim();
+    const lastNameValue = String(formData.get("lastName") ?? "").trim();
     const emailValue = String(formData.get("email") ?? "").trim();
     const roleValue = String(formData.get("role") ?? "").trim();
     const inviteRole =
-      roleValue === Role.PARENT || roleValue === Role.PLAYER
+      roleValue === Role.PARENT ||
+      roleValue === Role.PLAYER ||
+      roleValue === Role.TRAINER
         ? roleValue
         : null;
+
+    if (!firstNameValue || !lastNameValue) {
+      return { ok: false, error: "Bitte Vorname und Nachname pruefen." };
+    }
 
     if (!emailValue || !inviteRole) {
       return { ok: false, error: "Bitte E-Mail und Rolle pruefen." };
@@ -105,6 +181,8 @@ export default async function DashboardPage() {
         teamId,
         email: emailValue,
         role: inviteRole,
+        firstName: firstNameValue,
+        lastName: lastNameValue,
       });
       const inviteLink = new URL(`/join/${invite.token}`, env.APP_URL).toString();
       const inviteTeamName = sessionUser.activeTeam?.name ?? "Team";
@@ -134,6 +212,10 @@ export default async function DashboardPage() {
       currentUserRole={teamMembersForUser.currentUserRole}
       teams={userTeams}
       switchActiveTeamAction={switchActiveTeamAction}
+      adminTeams={adminTeams}
+      createTeamAction={createTeamAction}
+      renameTeamAction={renameTeamAction}
+      deleteTeamAction={deleteTeamAction}
     />
   );
 }

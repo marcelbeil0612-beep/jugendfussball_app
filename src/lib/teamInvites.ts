@@ -9,6 +9,7 @@ type InviteErrorCode =
   | "INVITE_NOT_FOUND"
   | "INVITE_USED"
   | "INVITE_EXPIRED"
+  | "INVITE_TEAM_DELETED"
   | "INVITE_EMAIL_MISMATCH"
   | "INVITE_USER_NOT_FOUND";
 
@@ -32,6 +33,8 @@ export async function createTeamInvite(params: {
   teamId: string;
   email: string;
   role: Role;
+  firstName?: string;
+  lastName?: string;
   expiresInDays?: number;
 }) {
   const normalizedEmail = normalizeEmail(params.email);
@@ -46,6 +49,8 @@ export async function createTeamInvite(params: {
       teamId: params.teamId,
       email: normalizedEmail,
       role: params.role,
+      firstName: params.firstName?.trim() || null,
+      lastName: params.lastName?.trim() || null,
       token,
       expiresAt,
     },
@@ -73,6 +78,15 @@ export async function acceptTeamInvite(params: {
     }
     if (invite.expiresAt && invite.expiresAt < now) {
       throw new InviteError("INVITE_EXPIRED");
+    }
+
+    const team = await tx.team.findUnique({
+      where: { id: invite.teamId },
+      select: { deletedAt: true },
+    });
+
+    if (!team || team.deletedAt) {
+      throw new InviteError("INVITE_TEAM_DELETED");
     }
 
     const user = await tx.user.findUnique({

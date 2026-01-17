@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Role } from "@prisma/client";
+import crypto from "node:crypto";
 
 import { prisma } from "@/lib/db";
 
@@ -27,6 +28,34 @@ export type UserTeam = {
   isActive: boolean;
 };
 
+export type AdminTeam = {
+  id: string;
+  name: string;
+  _count: {
+    members: number;
+  };
+};
+
+const MIN_TEAM_NAME_LENGTH = 3;
+const MAX_TEAM_NAME_LENGTH = 60;
+
+function normalizeTeamName(name: string) {
+  return name.trim();
+}
+
+function assertValidTeamName(name: string) {
+  const normalized = normalizeTeamName(name);
+  if (
+    normalized.length < MIN_TEAM_NAME_LENGTH ||
+    normalized.length > MAX_TEAM_NAME_LENGTH
+  ) {
+    throw new Error(
+      `Team-Name muss zwischen ${MIN_TEAM_NAME_LENGTH} und ${MAX_TEAM_NAME_LENGTH} Zeichen lang sein.`
+    );
+  }
+  return normalized;
+}
+
 /**
  * Liefert die Mitglieder des aktiven Teams für einen User.
  * TRAINER sehen alle Mitglieder; alle anderen Rollen sehen nur sich selbst.
@@ -40,6 +69,15 @@ export async function getMembersForActiveTeam(
   });
 
   if (!user?.activeTeamId) {
+    return { members: [], currentUserRole: null };
+  }
+
+  const activeTeam = await prisma.team.findFirst({
+    where: { id: user.activeTeamId, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!activeTeam) {
     return { members: [], currentUserRole: null };
   }
 
@@ -90,7 +128,7 @@ export async function getTeamsForUser(userId: string): Promise<UserTeam[]> {
   }
 
   const memberships = await prisma.teamMember.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, team: { deletedAt: null } },
     include: {
       team: {
         select: {
@@ -117,6 +155,7 @@ export async function setActiveTeam(
     where: {
       userId,
       teamId,
+      team: { deletedAt: null },
     },
     select: { id: true },
   });
@@ -130,5 +169,76 @@ export async function setActiveTeam(
     data: {
       activeTeamId: teamId,
     },
+  });
+}
+
+export async function getAllTeamsForAdmin(): Promise<AdminTeam[]> {
+  return prisma.team.findMany({
+    where: { deletedAt: null },
+    include: {
+      _count: {
+        select: { members: true },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export async function createTeam(teamName: string, creatorUserId: string) {
+  const normalizedName = assertValidTeamName(teamName);
+
+  const existingTeam = await prisma.team.findFirst({
+    where: { name: normalizedName, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (existingTeam) {
+    throw new Error("Team-Name bereits vergeben.");
+  }
+
+  const teamId = crypto.randomUUID();
+  const [team] = await prisma.$transaction([
+    prisma.team.create({
+      data: { id: teamId, name: normalizedName },
+    }),
+    prisma.teamMember.create({
+      data: {
+        userId: creatorUserId,
+        teamId,
+        role: "TRAINER",
+      },
+    }),
+  ]);
+
+  return team;
+}
+
+export async function renameTeam(teamId: string, newName: string) {
+  const normalizedName = assertValidTeamName(newName);
+
+  const existingTeam = await prisma.team.findFirst({
+    where: { name: normalizedName, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (existingTeam && existingTeam.id !== teamId) {
+    throw new Error("Team-Name bereits vergeben.");
+  }
+
+  return prisma.team.update({
+    where: { id: teamId },
+    data: { name: normalizedName },
+  });
+}
+
+export async function deleteTeam(teamId: string) {
+  await prisma.team.update({
+    where: { id: teamId },
+    data: { deletedAt: new Date() },
+  });
+
+  await prisma.user.updateMany({
+    where: { activeTeamId: teamId },
+    data: { activeTeamId: null },
   });
 }

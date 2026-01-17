@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 
-import type { SimpleTeamMember, TeamMembersForUser, UserTeam } from "@/lib/teams";
+import type {
+  AdminTeam,
+  SimpleTeamMember,
+  TeamMembersForUser,
+  UserTeam,
+} from "@/lib/teams";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -28,6 +33,10 @@ type DashboardPageClientProps = {
   currentUserRole: TeamMembersForUser["currentUserRole"];
   teams: UserTeam[];
   switchActiveTeamAction: (formData: FormData) => Promise<void>;
+  adminTeams: AdminTeam[];
+  createTeamAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
+  renameTeamAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
+  deleteTeamAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
 };
 
 type InviteState = {
@@ -49,16 +58,35 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
     currentUserRole,
     teams,
     switchActiveTeamAction,
+    adminTeams,
+    createTeamAction,
+    renameTeamAction,
+    deleteTeamAction,
   } = props;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [renamingTeamId, setRenamingTeamId] = useState<string | null>(null);
   const [inviteState, inviteFormAction, invitePending] = useActionState(
     inviteAction,
     { ok: true }
   );
-  const hasMultipleTeams = teams.length > 1;
-  const activeTeam = teams.find((team) => team.isActive) ?? teams[0] ?? null;
+  const activeTeam = teams.find((team) => team.isActive) ?? null;
+  const showTeamSwitcher =
+    teams.length > 0 && (teams.length > 1 || !activeTeam);
+
+  function runAction(
+    action: (formData: FormData) => Promise<{ ok: boolean; error?: string }>,
+    formData: FormData,
+    onDone?: () => void
+  ) {
+    startTransition(async () => {
+      await action(formData);
+      router.refresh();
+      onDone?.();
+    });
+  }
 
   return (
     <div className="page">
@@ -84,7 +112,7 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
             <p className="subtitle">Team: {teamName}</p>
           </div>
         </Card>
-        {hasMultipleTeams && activeTeam ? (
+        {showTeamSwitcher ? (
           <Card title="Aktives Team">
             <form
               className="stack"
@@ -100,8 +128,13 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
                 <select
                   className="input"
                   name="teamId"
-                  defaultValue={activeTeam.id}
+                  defaultValue={activeTeam?.id ?? ""}
                 >
+                  {!activeTeam ? (
+                    <option value="" disabled>
+                      Kein Team ausgewaehlt
+                    </option>
+                  ) : null}
                   {teams.map((team) => (
                     <option key={team.id} value={team.id}>
                       {team.name}
@@ -123,9 +156,17 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
         {isSystemAdmin ? (
           <Card
             title="Mitglied einladen"
-            description="Nur System-Admins koennen hier Einladungen an Eltern und Spieler verschicken."
+            description="Nur System-Admins koennen hier Einladungen an Trainer, Eltern und Spieler verschicken."
           >
             <form className="stack" action={inviteFormAction}>
+              <label className="stack">
+                <span className="subtitle">Vorname</span>
+                <input className="input" type="text" name="firstName" required />
+              </label>
+              <label className="stack">
+                <span className="subtitle">Nachname</span>
+                <input className="input" type="text" name="lastName" required />
+              </label>
               <label className="stack">
                 <span className="subtitle">E-Mail</span>
                 <input className="input" type="email" name="email" required />
@@ -135,6 +176,7 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
                 <select className="input" name="role" defaultValue="PARENT">
                   <option value="PARENT">PARENT</option>
                   <option value="PLAYER">PLAYER</option>
+                  <option value="TRAINER">TRAINER</option>
                 </select>
               </label>
               <Button type="submit" disabled={invitePending}>
@@ -181,6 +223,145 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
                 </label>
               </div>
             ) : null}
+          </Card>
+        ) : null}
+        {isSystemAdmin ? (
+          <Card
+            title="Teams verwalten"
+            description="Nur System-Admins koennen Teams erstellen, umbenennen und loeschen."
+          >
+            <div className="stack">
+              <div className="stack">
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => setShowCreateForm((current) => !current)}
+                >
+                  Neues Team erstellen
+                </button>
+                {showCreateForm ? (
+                  <form
+                    className="stack"
+                    action={(formData) =>
+                      runAction(createTeamAction, formData, () =>
+                        setShowCreateForm(false)
+                      )
+                    }
+                  >
+                    <label className="stack">
+                      <span className="subtitle">Teamname</span>
+                      <input
+                        className="input"
+                        name="teamName"
+                        type="text"
+                        minLength={3}
+                        maxLength={60}
+                        required
+                      />
+                    </label>
+                    <div className="stack">
+                      <Button type="submit" disabled={isPending}>
+                        Team anlegen
+                      </Button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => setShowCreateForm(false)}
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
+              </div>
+              {adminTeams.length === 0 ? (
+                <p className="subtitle">Noch keine Teams vorhanden.</p>
+              ) : (
+                <div className="stack">
+                  {adminTeams.map((team) => (
+                    <div key={team.id} className="card">
+                      <div className="stack">
+                        <strong>{team.name}</strong>
+                        <span className="subtitle">
+                          Mitglieder: {team._count?.members ?? 0}
+                        </span>
+                        <div className="stack">
+                          {renamingTeamId === team.id ? (
+                            <form
+                              className="stack"
+                              action={(formData) =>
+                                runAction(renameTeamAction, formData, () =>
+                                  setRenamingTeamId(null)
+                                )
+                              }
+                            >
+                              <input type="hidden" name="teamId" value={team.id} />
+                              <label className="stack">
+                                <span className="subtitle">Neuer Name</span>
+                                <input
+                                  className="input"
+                                  name="newName"
+                                  type="text"
+                                  defaultValue={team.name}
+                                  minLength={3}
+                                  maxLength={60}
+                                  required
+                                />
+                              </label>
+                              <div className="stack">
+                                <Button type="submit" disabled={isPending}>
+                                  Umbenennen
+                                </Button>
+                                <button
+                                  type="button"
+                                  className="button button--secondary"
+                                  onClick={() => setRenamingTeamId(null)}
+                                >
+                                  Abbrechen
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <div className="stack">
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                onClick={() => setRenamingTeamId(team.id)}
+                              >
+                                Umbenennen
+                              </button>
+                              <form
+                                action={(formData) =>
+                                  runAction(deleteTeamAction, formData)
+                                }
+                                onSubmit={(event) => {
+                                  if (
+                                    !window.confirm(
+                                      "Dieses Team wirklich loeschen?"
+                                    )
+                                  ) {
+                                    event.preventDefault();
+                                  }
+                                }}
+                              >
+                                <input type="hidden" name="teamId" value={team.id} />
+                                <button
+                                  type="submit"
+                                  className="button button--secondary"
+                                  disabled={isPending}
+                                >
+                                  Loeschen
+                                </button>
+                              </form>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Card>
         ) : null}
         <TeamMembersList
