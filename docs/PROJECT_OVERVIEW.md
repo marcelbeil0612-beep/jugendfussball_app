@@ -53,3 +53,17 @@ mit Binary-Engine.
 - Invite/Registrierung fuehrt nach Session auf `/auth/set-password`
 - System-Admin-Gates: Team-Erstellung, Invites und Rollenverwaltung nur mit `isSystemAdmin`
 - Phase 4: TRAINER duerfen fuer ihr Team Einladungen verschicken (TeamMember.role)
+
+### Phase 3 – Team-Mitgliederverwaltung
+
+- Pro aktivem Team gibt es eine Mitgliederliste (TeamMember).
+- Trainer und System-Admins koennen Rollen verwalten (TRAINER / PARENT / PLAYER).
+- Mitglieder koennen aus dem Team entfernt werden.
+- Ein Schutzmechanismus verhindert, dass der letzte Trainer eines Teams geloescht oder auf eine andere Rolle umgestellt wird.
+- Die Mitgliederverwaltung bildet die Grundlage fuer spaetere rollenabhaengige Module (Training, Spiele, Kommunikation).
+
+### E-Mail-Versand
+
+- Versand ueber Resend mit eigener Domain `marcelbeil.de`.
+- Zentrale `sendEmail`-Funktion in `src/lib/email.ts`.
+- Absender wird aus `EMAIL_FROM` und `EMAIL_FROM_NAME` aus der Umgebungskonfiguration zusammengesetzt.
