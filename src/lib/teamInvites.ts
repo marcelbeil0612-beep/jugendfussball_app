@@ -39,10 +39,7 @@ export async function createTeamInvite(params: {
 }) {
   const normalizedEmail = normalizeEmail(params.email);
   const token = createToken();
-  const expiresAt =
-    typeof params.expiresInDays === "number"
-      ? addDays(new Date(), params.expiresInDays)
-      : undefined;
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   const invite = await prisma.teamInvite.create({
     data: {
