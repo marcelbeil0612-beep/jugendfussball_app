@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { createSession, setSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -7,12 +6,12 @@ import { acceptTeamInvite } from "@/lib/teamInvites";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token?: string } }
+  context: { params: Promise<{ token: string }> }
 ) {
-  const token = params?.token;
+  const { token } = await context.params;
 
   if (!token || typeof token !== "string") {
-    console.warn("JOIN_FAIL: missing token in route handler", { params });
+    console.warn("JOIN_FAIL: missing token in route handler", { token });
     return NextResponse.redirect(new URL("/auth/login?invite=invalid", request.url));
   }
 
