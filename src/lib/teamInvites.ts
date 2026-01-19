@@ -26,9 +26,6 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const createToken = () => crypto.randomBytes(32).toString("base64url");
 
-const addDays = (date: Date, days: number) =>
-  new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-
 export async function createTeamInvite(params: {
   teamId: string;
   email: string;
