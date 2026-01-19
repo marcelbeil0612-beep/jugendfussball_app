@@ -8,7 +8,8 @@ type PageProps = {
   params: { token: string };
 };
 
-export default async function JoinPage({ params }: PageProps) {
+export default async function JoinPage(pageProps: PageProps) {
+  const params = await pageProps.params;
   if (!params?.token || typeof params.token !== "string") {
     console.warn("JoinPage ohne gueltigen Token aufgerufen", { params });
     return (
