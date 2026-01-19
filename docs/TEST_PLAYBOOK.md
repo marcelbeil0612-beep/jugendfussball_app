@@ -64,6 +64,10 @@
 - Erwartung:
   - Aufruf von `/dashboard` -> Redirect auf `/auth/set-password`.
   - Auf `/auth/set-password` Passwort und Bestaetigung eingeben -> Redirect auf `/dashboard`.
+- Manuell pruefen:
+  - User ohne `passwordHash` einloggen -> `/auth/set-password`.
+  - Auf `/auth/set-password` Passwort setzen -> `/dashboard`, kein Redirect zurueck.
+  - User mit `passwordHash` -> normales Login, kein Redirect.
 
 ## Smoke Tests (Phase 3 – System-Admin)
 - Mit Demo-Admin-User einloggen:

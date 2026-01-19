@@ -14,6 +14,10 @@ export async function requireSession() {
   return user;
 }
 
+// Hinweis:
+// - requireAuth wird nur auf geschuetzten Seiten wie /dashboard verwendet.
+// - /auth/set-password nutzt bewusst NUR requireSession(), damit User ohne Passwort
+//   ihr Passwort setzen koennen, ohne in einen Redirect-Loop zu geraten.
 export async function requireAuth() {
   const user = await requireSession();
   const dbUser = await prisma.user.findUnique({
@@ -26,6 +30,7 @@ export async function requireAuth() {
   }
 
   if (!dbUser.passwordHash) {
+    // Phase 3: User ohne Passwort immer zur Set-Password-Seite schicken.
     redirect("/auth/set-password");
   }
 
