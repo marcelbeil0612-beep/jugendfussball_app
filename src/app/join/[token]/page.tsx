@@ -9,6 +9,20 @@ type PageProps = {
 };
 
 export default async function JoinPage({ params }: PageProps) {
+  if (!params?.token || typeof params.token !== "string") {
+    console.warn("JoinPage ohne gueltigen Token aufgerufen", { params });
+    return (
+      <div className="page">
+        <main className="container stack">
+          <h1>Einladung ungueltig</h1>
+          <a className="button button--secondary" href="/auth/login">
+            Zurueck zum Login
+          </a>
+        </main>
+      </div>
+    );
+  }
+
   const token = params.token;
 
   try {
