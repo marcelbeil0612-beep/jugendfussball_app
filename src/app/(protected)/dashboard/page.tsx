@@ -1,12 +1,13 @@
 import { Role } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { requireAuth, requireSystemAdmin } from "@/lib/guards";
 import { env } from "@/lib/env";
+import { prisma } from "@/lib/db";
 import { createTeamInvite } from "@/lib/teamInvites";
 import { sendTeamInviteEmail } from "@/lib/mailer";
 import {
+  assertUserCanManageTeamMembers,
   createTeam,
   deleteTeam,
   getAllTeamsForAdmin,
@@ -118,6 +119,113 @@ export async function deleteTeamAction(formData: FormData) {
   }
 }
 
+export async function updateTeamMemberRoleAction(formData: FormData) {
+  "use server";
+
+  const user = await requireAuth();
+  const memberId = String(formData.get("memberId") ?? "");
+  const roleValue = String(formData.get("role") ?? "").trim();
+  const newRole =
+    roleValue === Role.TRAINER || roleValue === Role.PARENT || roleValue === Role.PLAYER
+      ? roleValue
+      : null;
+
+  if (!memberId || !newRole) {
+    console.error("updateTeamMemberRoleAction: invalid input");
+    return;
+  }
+
+  try {
+    const member = await prisma.teamMember.findUnique({
+      where: { id: memberId },
+      select: { id: true, teamId: true, role: true },
+    });
+
+    if (!member) {
+      console.error("updateTeamMemberRoleAction: member not found");
+      return;
+    }
+
+    await assertUserCanManageTeamMembers(user.id, member.teamId);
+
+    if (member.role === "TRAINER" && newRole !== "TRAINER") {
+      const trainerCount = await prisma.teamMember.count({
+        where: {
+          teamId: member.teamId,
+          role: "TRAINER",
+          id: { not: memberId },
+        },
+      });
+
+      if (trainerCount === 0) {
+        throw new Error("Es muss mindestens ein Trainer im Team bleiben.");
+      }
+    }
+
+    await prisma.teamMember.update({
+      where: { id: memberId },
+      data: { role: newRole },
+    });
+
+    revalidatePath("/dashboard");
+  } catch (error) {
+    console.error("updateTeamMemberRoleAction failed", error);
+  }
+}
+
+export async function removeTeamMemberAction(formData: FormData) {
+  "use server";
+
+  const user = await requireAuth();
+  const memberId = String(formData.get("memberId") ?? "");
+
+  if (!memberId) {
+    console.error("removeTeamMemberAction: missing memberId");
+    return;
+  }
+
+  try {
+    const member = await prisma.teamMember.findUnique({
+      where: { id: memberId },
+      select: { id: true, teamId: true, role: true, userId: true },
+    });
+
+    if (!member) {
+      console.error("removeTeamMemberAction: member not found");
+      return;
+    }
+
+    await assertUserCanManageTeamMembers(user.id, member.teamId);
+
+    if (member.role === "TRAINER") {
+      const trainerCount = await prisma.teamMember.count({
+        where: {
+          teamId: member.teamId,
+          role: "TRAINER",
+          id: { not: memberId },
+        },
+      });
+
+      if (trainerCount === 0) {
+        throw new Error("Es muss mindestens ein Trainer im Team bleiben.");
+      }
+    }
+
+    await prisma.teamMember.delete({ where: { id: memberId } });
+
+    if (member.userId === user.id && user.activeTeamId === member.teamId) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { activeTeamId: null },
+      });
+    }
+
+    revalidatePath("/dashboard");
+  } catch (error) {
+    console.error("removeTeamMemberAction failed", error);
+  }
+}
+
 export default async function DashboardPage() {
   const user = await requireAuth();
   const activeMembershipRole = user.memberships?.find(
@@ -126,10 +234,13 @@ export default async function DashboardPage() {
   const roleLabel = activeMembershipRole ?? "—";
   const cards = activeMembershipRole ? roleCards[activeMembershipRole] ?? [] : [];
   const teamName = user.activeTeam?.name ?? "Nicht zugeordnet";
-  const teamMembersForUser = await getMembersForActiveTeam(user.id);
+  const members = await getMembersForActiveTeam(user.id);
   const userTeams = await getTeamsForUser(user.id);
   const isSystemAdmin = user.isSystemAdmin;
   const adminTeams = isSystemAdmin ? await getAllTeamsForAdmin() : [];
+  const canManageMembers =
+    isSystemAdmin ||
+    members.some((member) => member.userId === user.id && member.role === "TRAINER");
 
   async function switchActiveTeamAction(formData: FormData) {
     "use server";
@@ -208,8 +319,10 @@ export default async function DashboardPage() {
       isSystemAdmin={isSystemAdmin}
       userEmail={user.email}
       inviteAction={inviteAction}
-      teamMembers={teamMembersForUser.members}
-      currentUserRole={teamMembersForUser.currentUserRole}
+      teamMembers={members}
+      canManageMembers={canManageMembers}
+      updateTeamMemberRoleAction={updateTeamMemberRoleAction}
+      removeTeamMemberAction={removeTeamMemberAction}
       teams={userTeams}
       switchActiveTeamAction={switchActiveTeamAction}
       adminTeams={adminTeams}

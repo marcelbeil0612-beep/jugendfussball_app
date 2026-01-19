@@ -5,20 +5,6 @@ import crypto from "node:crypto";
 
 import { prisma } from "@/lib/db";
 
-export type SimpleTeamMember = {
-  memberId: string;
-  userId: string;
-  name: string;
-  email: string;
-  role: Role;
-  isCurrentUser: boolean;
-};
-
-export type TeamMembersForUser = {
-  members: SimpleTeamMember[];
-  currentUserRole: Role | null;
-};
-
 export type TeamMemberRole = Role;
 
 export type UserTeam = {
@@ -39,6 +25,10 @@ export type AdminTeam = {
 const MIN_TEAM_NAME_LENGTH = 3;
 const MAX_TEAM_NAME_LENGTH = 60;
 
+export type TeamMemberWithUser = Awaited<
+  ReturnType<typeof getMembersForActiveTeam>
+>[number];
+
 function normalizeTeamName(name: string) {
   return name.trim();
 }
@@ -56,20 +46,14 @@ function assertValidTeamName(name: string) {
   return normalized;
 }
 
-/**
- * Liefert die Mitglieder des aktiven Teams für einen User.
- * TRAINER sehen alle Mitglieder; alle anderen Rollen sehen nur sich selbst.
- */
-export async function getMembersForActiveTeam(
-  userId: string,
-): Promise<TeamMembersForUser> {
+export async function getMembersForActiveTeam(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, activeTeamId: true },
   });
 
   if (!user?.activeTeamId) {
-    return { members: [], currentUserRole: null };
+    return [];
   }
 
   const activeTeam = await prisma.team.findFirst({
@@ -78,12 +62,16 @@ export async function getMembersForActiveTeam(
   });
 
   if (!activeTeam) {
-    return { members: [], currentUserRole: null };
+    return [];
   }
 
-  const memberships = await prisma.teamMember.findMany({
-    where: { teamId: user.activeTeamId },
-    include: {
+  return prisma.teamMember.findMany({
+    where: { teamId: user.activeTeamId, team: { deletedAt: null } },
+    select: {
+      id: true,
+      userId: true,
+      role: true,
+      createdAt: true,
       user: {
         select: {
           id: true,
@@ -91,30 +79,35 @@ export async function getMembersForActiveTeam(
         },
       },
     },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export async function assertUserCanManageTeamMembers(
+  userId: string,
+  teamId: string,
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, isSystemAdmin: true },
   });
 
-  const currentMembership = memberships.find((member) => member.userId === user.id);
-
-  if (!currentMembership) {
-    return { members: [], currentUserRole: null };
+  if (!user) {
+    throw new Error("User not found");
   }
 
-  const currentUserRole = currentMembership.role;
-  const visibleMemberships =
-    currentUserRole === "TRAINER"
-      ? memberships
-      : memberships.filter((member) => member.userId === user.id);
+  if (user.isSystemAdmin) {
+    return;
+  }
 
-  const members: SimpleTeamMember[] = visibleMemberships.map((member) => ({
-    memberId: member.id,
-    userId: member.user.id,
-    name: member.user.email ?? "Unbekannt",
-    email: member.user.email ?? "",
-    role: member.role,
-    isCurrentUser: member.user.id === user.id,
-  }));
+  const trainerMembership = await prisma.teamMember.findFirst({
+    where: { userId, teamId, role: "TRAINER", team: { deletedAt: null } },
+    select: { id: true },
+  });
 
-  return { members, currentUserRole };
+  if (!trainerMembership) {
+    throw new Error("Not allowed");
+  }
 }
 
 export async function getTeamsForUser(userId: string): Promise<UserTeam[]> {

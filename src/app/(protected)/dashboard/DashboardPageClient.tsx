@@ -5,8 +5,7 @@ import { useActionState, useState, useTransition } from "react";
 
 import type {
   AdminTeam,
-  SimpleTeamMember,
-  TeamMembersForUser,
+  TeamMemberWithUser,
   UserTeam,
 } from "@/lib/teams";
 
@@ -29,8 +28,10 @@ type DashboardPageClientProps = {
     prevState: InviteState,
     formData: FormData
   ) => Promise<InviteState>;
-  teamMembers: SimpleTeamMember[];
-  currentUserRole: TeamMembersForUser["currentUserRole"];
+  teamMembers: TeamMemberWithUser[];
+  canManageMembers: boolean;
+  updateTeamMemberRoleAction: (formData: FormData) => Promise<void>;
+  removeTeamMemberAction: (formData: FormData) => Promise<void>;
   teams: UserTeam[];
   switchActiveTeamAction: (formData: FormData) => Promise<void>;
   adminTeams: AdminTeam[];
@@ -55,7 +56,9 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
     userEmail,
     inviteAction,
     teamMembers,
-    currentUserRole,
+    canManageMembers,
+    updateTeamMemberRoleAction,
+    removeTeamMemberAction,
     teams,
     switchActiveTeamAction,
     adminTeams,
@@ -366,7 +369,9 @@ export function DashboardPageClient(props: DashboardPageClientProps) {
         ) : null}
         <TeamMembersList
           members={teamMembers}
-          currentUserRole={currentUserRole}
+          canManageMembers={canManageMembers}
+          updateTeamMemberRoleAction={updateTeamMemberRoleAction}
+          removeTeamMemberAction={removeTeamMemberAction}
         />
         <div className="grid">
           {cards.map((card) => (

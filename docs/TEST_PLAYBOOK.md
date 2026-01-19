@@ -73,6 +73,24 @@
   - Versuchen, Team zu erstellen (z. B. direkt Action ausloesen).
   - Erwartung: Aktion wirft Fehler ("Not allowed") / UI zeigt Fehlermeldung.
 
+## Phase 3 – Team-Mitgliederverwaltung
+
+Smoke-Tests:
+
+- Trainer oder System-Admin sieht im Dashboard die Team-Mitgliederliste des aktiven Teams.
+- Parent/Player sieht die Mitgliederverwaltung nicht bzw. nur ohne Bearbeitungsaktionen.
+- Rollenwechsel:
+  - TRAINER -> PARENT/PLAYER (wenn noch mindestens ein weiterer Trainer im Team ist)
+  - PARENT/PLAYER -> TRAINER
+- Schutz "letzter Trainer":
+  - Versuch, den einzigen Trainer im Team zu loeschen -> schlaegt fehl, Team behaelt den Trainer.
+  - Versuch, den einzigen Trainer im Team auf PARENT oder PLAYER umzustellen -> schlaegt fehl, Rolle bleibt TRAINER.
+- Entfernen eines Team-Mitglieds:
+  - Parent/Player laesst sich aus der Liste entfernen und erscheint nicht mehr in der Mitgliederuebersicht.
+  - Entfernt sich ein User selbst aus einem Team, in dem er war, wird ggf. `activeTeamId` korrekt zurueckgesetzt (kein aktives Team mehr).
+- E-Mail:
+  - Invite-/Registrierungs-Mails werden ueber den neuen Resend-Mailer verschickt (keine Typfehler, keine Crashes).
+
 ## E2E Magic-Link (Resend)
 1. Dev-Server laeuft: `npm run dev`.
    Erwartung: Invite-Flow ist verfuegbar.
