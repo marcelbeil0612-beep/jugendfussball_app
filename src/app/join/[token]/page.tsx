@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getSessionUser } from "@/lib/auth";
+import { createSession, setSessionCookie } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { acceptTeamInvite } from "@/lib/teamInvites";
 
 type PageProps = {
@@ -8,16 +9,43 @@ type PageProps = {
 };
 
 export default async function JoinPage({ params }: PageProps) {
-  const user = await getSessionUser();
   const token = params.token;
 
-  if (!user) {
-    const next = `/join/${token}`;
-    redirect(`/auth/login?next=${encodeURIComponent(next)}`);
-  }
-
   try {
+    const invite = await prisma.teamInvite.findUnique({
+      where: { token },
+      select: { email: true, usedAt: true, expiresAt: true },
+    });
+
+    if (!invite) {
+      throw new Error("Invite not found");
+    }
+
+    if (invite.usedAt) {
+      throw new Error("Invite used");
+    }
+
+    if (invite.expiresAt && invite.expiresAt < new Date()) {
+      throw new Error("Invite expired");
+    }
+
+    const email = invite.email.trim().toLowerCase();
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: { email },
+      select: { id: true, passwordHash: true },
+    });
+
     await acceptTeamInvite({ token, userId: user.id });
+
+    const session = await createSession(user.id);
+    await setSessionCookie(session.token, session.expiresAt);
+
+    if (!user.passwordHash) {
+      redirect("/auth/set-password");
+    }
+
     redirect("/dashboard");
   } catch {
     return (

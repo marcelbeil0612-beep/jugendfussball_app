@@ -36,7 +36,7 @@
 - PARENT / PLAYER sehen keine Invite-Box.
 - TRAINER kann Invite mit Rolle PARENT oder PLAYER versenden.
 - Invite-Mail enthaelt funktionierenden `/join/{token}`-Link.
-- Nicht eingeloggter User -> Login -> Join -> Dashboard.
+- Nicht eingeloggter User -> Join-Link oeffnen -> Session -> Set-Password (falls noetig) -> Dashboard.
 - Invite ist einmalig (zweiter Aufruf zeigt Fehlerseite).
 - Invite mit falscher E-Mail -> Fehlerseite.
 
@@ -46,7 +46,7 @@
   - Erwartung:
     - Dashboard zeigt nach dem Invite einen kopierbaren Einladungslink.
     - Link `/join/{token}` funktioniert:
-      - Ohne Login -> Login / Set-Password -> Dashboard.
+      - Ohne Login -> Session / Set-Password -> Dashboard.
     - Nach Klick auf "Link kopieren" erscheint kurz "Link kopiert".
 
 ## Smoke Tests (Phase 3 – Passwort-Login)
