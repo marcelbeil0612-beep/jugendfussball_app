@@ -25,9 +25,18 @@ export type AdminTeam = {
 const MIN_TEAM_NAME_LENGTH = 3;
 const MAX_TEAM_NAME_LENGTH = 60;
 
-export type TeamMemberWithUser = Awaited<
-  ReturnType<typeof getMembersForActiveTeam>
->[number];
+export type TeamMemberWithUser = {
+  id: string;
+  userId: string;
+  role: Role;
+  createdAt: Date;
+  user: {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  };
+};
 
 function normalizeTeamName(name: string) {
   return name.trim();
@@ -46,7 +55,9 @@ function assertValidTeamName(name: string) {
   return normalized;
 }
 
-export async function getMembersForActiveTeam(userId: string) {
+export async function getMembersForActiveTeam(
+  userId: string
+): Promise<TeamMemberWithUser[]> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, activeTeamId: true },
@@ -76,6 +87,8 @@ export async function getMembersForActiveTeam(userId: string) {
         select: {
           id: true,
           email: true,
+          firstName: true,
+          lastName: true,
         },
       },
     },

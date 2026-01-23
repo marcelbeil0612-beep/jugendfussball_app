@@ -20,40 +20,6 @@ import { DashboardPageClient } from "./DashboardPageClient";
 
 export const runtime = "nodejs";
 
-type CardItem = {
-  title: string;
-  description: string;
-};
-
-const trainerCards: CardItem[] = [
-  { title: "Termine", description: "Coming soon" },
-  { title: "Zusagen", description: "Coming soon" },
-  { title: "Fahrdienst", description: "Coming soon" },
-  { title: "Kommunikation", description: "Coming soon" },
-  { title: "Team", description: "Coming soon" },
-  { title: "Training", description: "Coming soon" },
-  { title: "Spiel", description: "Coming soon" },
-  { title: "CoachGPT", description: "Coming soon" },
-];
-
-const parentCards: CardItem[] = [
-  { title: "Termine", description: "Coming soon" },
-  { title: "Fahrdienst", description: "Coming soon" },
-  { title: "Ankuendigungen", description: "Coming soon" },
-];
-
-const playerCards: CardItem[] = [
-  { title: "Termine", description: "Coming soon" },
-];
-
-const roleCards: Record<Role, CardItem[]> = {
-  TRAINER: trainerCards,
-  COACH: trainerCards,
-  MANAGER: trainerCards,
-  PARENT: parentCards,
-  PLAYER: playerCards,
-};
-
 type InviteState = {
   ok: boolean;
   error?: string;
@@ -232,7 +198,6 @@ export default async function DashboardPage() {
     (membership) => membership.teamId === user.activeTeamId
   )?.role;
   const roleLabel = activeMembershipRole ?? "—";
-  const cards = activeMembershipRole ? roleCards[activeMembershipRole] ?? [] : [];
   const teamName = user.activeTeam?.name ?? "Nicht zugeordnet";
   const members = await getMembersForActiveTeam(user.id);
   const userTeams = await getTeamsForUser(user.id);
@@ -314,7 +279,6 @@ export default async function DashboardPage() {
   return (
     <DashboardPageClient
       roleLabel={roleLabel}
-      cards={cards}
       teamName={teamName}
       isSystemAdmin={isSystemAdmin}
       userEmail={user.email}

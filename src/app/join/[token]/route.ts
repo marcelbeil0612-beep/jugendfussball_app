@@ -20,7 +20,13 @@ export async function GET(
   try {
     const invite = await prisma.teamInvite.findUnique({
       where: { token },
-      select: { email: true, usedAt: true, expiresAt: true },
+      select: {
+        email: true,
+        usedAt: true,
+        expiresAt: true,
+        firstName: true,
+        lastName: true,
+      },
     });
 
     if (!invite) {
@@ -39,12 +45,29 @@ export async function GET(
     }
 
     const email = invite.email.trim().toLowerCase();
+    const inviteFirstName = invite.firstName?.trim() || null;
+    const inviteLastName = invite.lastName?.trim() || null;
     const user = await prisma.user.upsert({
       where: { email },
       update: {},
-      create: { email },
-      select: { id: true, passwordHash: true },
+      create: {
+        email,
+        firstName: inviteFirstName,
+        lastName: inviteLastName,
+      },
+      select: { id: true, passwordHash: true, firstName: true, lastName: true },
     });
+    const shouldUpdateName =
+      (!!inviteFirstName && !user.firstName) || (!!inviteLastName && !user.lastName);
+    if (shouldUpdateName) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          firstName: user.firstName ?? inviteFirstName,
+          lastName: user.lastName ?? inviteLastName,
+        },
+      });
+    }
     console.log("JOIN_DEBUG: user upserted (route)", {
       userId: user.id,
       hasPassword: !!user.passwordHash,
