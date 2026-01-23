@@ -32,6 +32,8 @@ model User {
   email         String           @unique
   passwordHash  String?          // neu: Hash des Passworts, optional fuer bestehende User
   isSystemAdmin Boolean          @default(false) // neu: System-Admin-Flag
+  firstName     String?
+  lastName      String?
   activeTeamId  String?
   activeTeam    Team?            @relation("ActiveTeam", fields: [activeTeamId], references: [id])
   createdAt     DateTime         @default(now())
@@ -82,17 +84,16 @@ model MagicLinkToken {
 }
 
 model TeamInvite {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  teamId    String
-  email     String
-  role      Role
-  firstName String?
-  lastName  String?
-
-  createdAt DateTime @default(now())
-  expiresAt DateTime?
-  usedAt    DateTime?
+  id         String   @id @default(uuid())
+  teamId     String
+  email      String
+  role       Role
+  token      String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  firstName  String?
+  lastName   String?
+  createdAt  DateTime @default(now())
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
